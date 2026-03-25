@@ -66,3 +66,19 @@ test('setMode stops modules no longer eligible', () => {
     runtime.setMode('conservative')
     expect(mod.stop).toHaveBeenCalledOnce()
 })
+
+import { JSqueeze } from '../core/index.js'
+
+test('JSqueeze.start and stop round-trip', () => {
+    JSqueeze.start({ mode: 'conservative', debug: false })
+    expect(JSqueeze.getMode()).toBe('conservative')
+    JSqueeze.stop()
+})
+
+test('JSqueeze.stats returns correct shape', () => {
+    JSqueeze.start({ mode: 'conservative', debug: false })
+    const s = JSqueeze.stats()
+    expect(s).toHaveProperty('interceptedTasks')
+    expect(s).toHaveProperty('rafCalls')
+    JSqueeze.stop()
+})
