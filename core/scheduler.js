@@ -12,6 +12,8 @@ export function createSchedulerModule(debug) {
 
     function patchSetTimeout() {
         _setTimeout = window.setTimeout
+        if (!_setTimeout) return
+
         window.setTimeout = function (fn, delay, ...args) {
             debug?.increment('interceptedTasks')
             return _setTimeout.call(window, fn, delay, ...args)
@@ -20,6 +22,8 @@ export function createSchedulerModule(debug) {
 
     function patchRaf() {
         _requestAnimationFrame = window.requestAnimationFrame
+        if (!_requestAnimationFrame) return
+
         window.requestAnimationFrame = function (callback) {
             debug?.increment('rafCalls')
 
