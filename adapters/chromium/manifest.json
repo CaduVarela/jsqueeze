@@ -1,0 +1,22 @@
+{
+    "manifest_version": 3,
+    "name": "JSqueeze",
+    "version": "0.1.0",
+    "description": "Performance runtime injected into web apps",
+    "permissions": ["scripting", "activeTab"],
+    "host_permissions": ["<all_urls>"],
+    "content_scripts": [
+        {
+            "matches": ["<all_urls>"],
+            "js": ["content-script.js"],
+            "run_at": "document_start",
+            "world": "ISOLATED"
+        }
+    ],
+    "web_accessible_resources": [
+        {
+            "resources": ["jsqueeze.bundle.js"],
+            "matches": ["<all_urls>"]
+        }
+    ]
+}
