@@ -4,6 +4,10 @@ const COUNTER_KEYS = [
     'rafCalls',
     'blockedAnimations',
     'throttledEvents',
+    'mutationsBatched',
+    'mutationsObserved',
+    'batchCount',
+    'eventsSkipped',
 ]
 
 function zeroCounters() {

@@ -13,6 +13,10 @@ test('stats returns zeroed object before start', () => {
         rafCalls: 0,
         blockedAnimations: 0,
         throttledEvents: 0,
+        mutationsBatched: 0,
+        mutationsObserved: 0,
+        batchCount: 0,
+        eventsSkipped: 0,
     })
 })
 

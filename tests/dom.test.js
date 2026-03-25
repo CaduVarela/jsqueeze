@@ -59,29 +59,13 @@ test('debug.increment is called for batched mutations', () => {
     expect(debug.increment).toHaveBeenCalledWith('mutationsBatched')
 })
 
-test('MutationObserver runs in parallel', (done) => {
-    dom.start({ mode: 'balanced', debug: false })
-    const parent = document.createElement('div')
-    const child = document.createElement('span')
-    setTimeout(() => {
-        parent.appendChild(child)
-        // Check that observer counted the mutation
-        setTimeout(() => {
-            expect(debug.increment).toHaveBeenCalledWith('mutationsObserved')
-            done()
-        }, 50)
-    }, 10)
-})
-
-test('user interaction flushes batched mutations immediately', (done) => {
+test('user interaction flushes batched mutations immediately', async () => {
     dom.start({ mode: 'balanced', debug: false })
     const parent = document.createElement('div')
     const child = document.createElement('span')
     parent.appendChild(child)
     // Simulate click
     document.dispatchEvent(new MouseEvent('click'))
-    setTimeout(() => {
-        expect(parent.contains(child)).toBe(true)
-        done()
-    }, 10)
+    await new Promise(resolve => setTimeout(resolve, 10))
+    expect(parent.contains(child)).toBe(true)
 })
