@@ -6,7 +6,6 @@ let debug
 beforeEach(() => {
     debug = { increment: vi.fn() }
     dom = createDomModule(debug)
-    // Clear DOM
     document.body.innerHTML = ''
 })
 
@@ -21,51 +20,48 @@ test('module shape is correct', () => {
 
 test('start monkey-patches Element.prototype.appendChild', () => {
     const original = Element.prototype.appendChild
-    dom.start({ mode: 'balanced', debug: false })
+    dom.start({})
     expect(Element.prototype.appendChild).not.toBe(original)
 })
 
 test('stop restores Element.prototype.appendChild', () => {
     const original = Element.prototype.appendChild
-    dom.start({ mode: 'balanced', debug: false })
+    dom.start({})
     dom.stop()
     expect(Element.prototype.appendChild).toBe(original)
 })
 
-test('appendChild in conservative mode works immediately', () => {
-    dom.start({ mode: 'conservative', debug: false })
+test('appendChild executes immediately', () => {
+    dom.start({})
     const parent = document.createElement('div')
     const child = document.createElement('span')
     parent.appendChild(child)
     expect(parent.contains(child)).toBe(true)
 })
 
-test('appendChild in balanced mode queues and flushes at rAF', async () => {
-    dom.start({ mode: 'balanced', debug: false })
+test('insertBefore executes immediately', () => {
+    dom.start({})
+    const parent = document.createElement('div')
+    const child1 = document.createElement('span')
+    const child2 = document.createElement('span')
+    parent.appendChild(child1)
+    parent.insertBefore(child2, child1)
+    expect(parent.firstChild).toBe(child2)
+})
+
+test('removeChild executes immediately', () => {
+    dom.start({})
     const parent = document.createElement('div')
     const child = document.createElement('span')
     parent.appendChild(child)
-    // In balanced mode, mutation is queued, not immediately applied
-    // After flushing, child should be added
-    await new Promise(resolve => requestAnimationFrame(resolve))
-    expect(parent.contains(child)).toBe(true)
+    parent.removeChild(child)
+    expect(parent.contains(child)).toBe(false)
 })
 
-test('debug.increment is called for batched mutations', () => {
-    dom.start({ mode: 'balanced', debug: true })
+test('debug.increment is called for mutations', () => {
+    dom.start({})
     const parent = document.createElement('div')
     const child = document.createElement('span')
     parent.appendChild(child)
     expect(debug.increment).toHaveBeenCalledWith('mutationsBatched')
-})
-
-test('user interaction flushes batched mutations immediately', async () => {
-    dom.start({ mode: 'balanced', debug: false })
-    const parent = document.createElement('div')
-    const child = document.createElement('span')
-    parent.appendChild(child)
-    // Simulate click
-    document.dispatchEvent(new MouseEvent('click'))
-    await new Promise(resolve => setTimeout(resolve, 10))
-    expect(parent.contains(child)).toBe(true)
 })

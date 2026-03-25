@@ -1,5 +1,3 @@
-const MONITORED_EVENTS = ['click', 'scroll', 'keypress', 'touchstart', 'mousedown']
-
 export function createDomModule(debug) {
     let _appendChild = null
     let _insertBefore = null
@@ -8,59 +6,11 @@ export function createDomModule(debug) {
     let _setTextContent = null
     let mutationObserver = null
     let config = {}
-    let mutationQueue = []
-    let rafId = null
-    let timeoutId = null
-
-    function queueMutation(fn) {
-        mutationQueue.push(fn)
-        scheduleFlush()
-    }
-
-    function scheduleFlush() {
-        if (rafId !== null) return
-
-        if (config.mode === 'conservative') {
-            flushMutations()
-        } else {
-            rafId = requestAnimationFrame(() => {
-                flushMutations()
-                rafId = null
-            })
-
-            // Safeguard: force flush after 100ms if mutations still queued
-            if (timeoutId !== null) clearTimeout(timeoutId)
-            timeoutId = setTimeout(() => {
-                if (mutationQueue.length > 0) {
-                    if (rafId !== null) cancelAnimationFrame(rafId)
-                    flushMutations()
-                    rafId = null
-                }
-                timeoutId = null
-            }, 100)
-        }
-    }
-
-    function flushMutations() {
-        if (mutationQueue.length === 0) return
-        const toFlush = [...mutationQueue]
-        mutationQueue = []
-        for (const fn of toFlush) {
-            try {
-                fn()
-            } catch (e) {
-                console.error('Error flushing mutation:', e)
-            }
-        }
-        if (debug) {
-            debug.increment('batchCount')
-        }
-    }
 
     function setupMutationObserver() {
         mutationObserver = new MutationObserver((mutations) => {
             if (debug) {
-                debug.increment('mutationsObserved', mutations.length)
+                debug.increment('mutationsObserved')
             }
         })
         mutationObserver.observe(document.documentElement, {
@@ -71,60 +21,27 @@ export function createDomModule(debug) {
         })
     }
 
-    function setupInteractionListeners() {
-        const flush = () => {
-            if (mutationQueue.length > 0) {
-                if (rafId !== null) cancelAnimationFrame(rafId)
-                if (timeoutId !== null) clearTimeout(timeoutId)
-                flushMutations()
-                rafId = null
-                timeoutId = null
-            }
-        }
-        MONITORED_EVENTS.forEach(evt => {
-            document.addEventListener(evt, flush, { passive: true })
-        })
-    }
-
     function patchAppendChild() {
         _appendChild = Element.prototype.appendChild
         Element.prototype.appendChild = function (child) {
-            if (config.mode === 'conservative') {
-                return _appendChild.call(this, child)
-            }
-            queueMutation(() => {
-                _appendChild.call(this, child)
-            })
             if (debug) debug.increment('mutationsBatched')
-            return child
+            return _appendChild.call(this, child)
         }
     }
 
     function patchInsertBefore() {
         _insertBefore = Element.prototype.insertBefore
         Element.prototype.insertBefore = function (newNode, refNode) {
-            if (config.mode === 'conservative') {
-                return _insertBefore.call(this, newNode, refNode)
-            }
-            queueMutation(() => {
-                _insertBefore.call(this, newNode, refNode)
-            })
             if (debug) debug.increment('mutationsBatched')
-            return newNode
+            return _insertBefore.call(this, newNode, refNode)
         }
     }
 
     function patchRemoveChild() {
         _removeChild = Element.prototype.removeChild
         Element.prototype.removeChild = function (child) {
-            if (config.mode === 'conservative') {
-                return _removeChild.call(this, child)
-            }
-            queueMutation(() => {
-                _removeChild.call(this, child)
-            })
             if (debug) debug.increment('mutationsBatched')
-            return child
+            return _removeChild.call(this, child)
         }
     }
 
@@ -134,14 +51,8 @@ export function createDomModule(debug) {
         _setInnerHTML = descriptor.set
         Object.defineProperty(Element.prototype, 'innerHTML', {
             set: function (html) {
-                if (config.mode === 'conservative') {
-                    _setInnerHTML.call(this, html)
-                    return
-                }
-                queueMutation(() => {
-                    _setInnerHTML.call(this, html)
-                })
                 if (debug) debug.increment('mutationsBatched')
+                _setInnerHTML.call(this, html)
             },
             get: descriptor.get,
         })
@@ -153,14 +64,8 @@ export function createDomModule(debug) {
         _setTextContent = descriptor.set
         Object.defineProperty(Element.prototype, 'textContent', {
             set: function (text) {
-                if (config.mode === 'conservative') {
-                    _setTextContent.call(this, text)
-                    return
-                }
-                queueMutation(() => {
-                    _setTextContent.call(this, text)
-                })
                 if (debug) debug.increment('mutationsBatched')
+                _setTextContent.call(this, text)
             },
             get: descriptor.get,
         })
@@ -174,7 +79,6 @@ export function createDomModule(debug) {
         patchInnerHTML()
         patchTextContent()
         setupMutationObserver()
-        setupInteractionListeners()
     }
 
     function stop() {
@@ -182,10 +86,6 @@ export function createDomModule(debug) {
         if (_insertBefore) Element.prototype.insertBefore = _insertBefore
         if (_removeChild) Element.prototype.removeChild = _removeChild
         if (mutationObserver) mutationObserver.disconnect()
-        if (rafId !== null) cancelAnimationFrame(rafId)
-        if (timeoutId !== null) clearTimeout(timeoutId)
-        flushMutations()
-        mutationQueue = []
     }
 
     return { name: 'dom', minLevel: 2, start, stop }

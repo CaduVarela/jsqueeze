@@ -15,7 +15,6 @@ test('stats returns zeroed object before start', () => {
         throttledEvents: 0,
         mutationsBatched: 0,
         mutationsObserved: 0,
-        batchCount: 0,
         eventsSkipped: 0,
     })
 })

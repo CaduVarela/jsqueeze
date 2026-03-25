@@ -6,7 +6,6 @@ const COUNTER_KEYS = [
     'throttledEvents',
     'mutationsBatched',
     'mutationsObserved',
-    'batchCount',
     'eventsSkipped',
 ]
 
