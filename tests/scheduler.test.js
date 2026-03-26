@@ -1,4 +1,5 @@
 import { createSchedulerModule } from '../core/scheduler.js'
+import { createWorkersModule } from '../core/workers.js'
 
 let scheduler
 let debug
@@ -57,4 +58,38 @@ test('stop restores window.requestAnimationFrame', () => {
     scheduler.start({ mode: 'conservative', debug: false })
     scheduler.stop()
     expect(window.requestAnimationFrame).toBe(original)
+})
+
+test('scheduler offloads long tasks to worker pool', () => {
+    // Mock the Worker class to avoid initialization errors in test environment
+    class MockWorker {
+        constructor() {
+            this.onmessage = null
+        }
+        postMessage() {}
+        terminate() {}
+    }
+    global.Worker = MockWorker
+
+    const debugObj = { increment: vi.fn() }
+    const testScheduler = createSchedulerModule(debugObj)
+    const workers = createWorkersModule(debugObj)
+
+    testScheduler.start({ mode: 'aggressive', debug: false })
+    workers.start({ mode: 'aggressive', debug: false })
+
+    testScheduler.setWorkersModule(workers)
+
+    const longTask = () => {
+        let sum = 0
+        for (let i = 0; i < 10000000; i++) sum += i
+        return sum
+    }
+
+    testScheduler.queue(longTask, 'low')
+
+    expect(testScheduler.getQueueLength()).toBeGreaterThan(0)
+
+    workers.stop()
+    testScheduler.stop()
 })
