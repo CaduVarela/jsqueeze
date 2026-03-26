@@ -7,8 +7,32 @@ export function createWorkerPool(config = {}) {
     let nextWorkerIndex = 0
 
     function initializeWorkers() {
+        // Worker code as string to avoid CORS issues
+        const workerCode = `
+            self.onmessage = function(event) {
+                const { taskId, type, code, data } = event.data
+                try {
+                    if (type === 'compute') {
+                        const fn = eval(\`(\${code})\`)
+                        const result = fn(...Object.values(data))
+                        self.postMessage({ taskId, result })
+                    } else if (type === 'execute') {
+                        const fn = eval(\`(\${code})\`)
+                        const result = fn()
+                        self.postMessage({ taskId, result })
+                    }
+                } catch (error) {
+                    self.postMessage({ taskId, error: error.message })
+                }
+            }
+        `
+
+        // Create Blob URL to avoid CORS restrictions
+        const blob = new Blob([workerCode], { type: 'application/javascript' })
+        const workerUrl = URL.createObjectURL(blob)
+
         for (let i = 0; i < workerCount; i++) {
-            const worker = new Worker('/adapters/chromium/workers/worker-pool.js')
+            const worker = new Worker(workerUrl)
             worker.onmessage = handleWorkerMessage
             workers.push(worker)
         }
