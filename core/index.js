@@ -37,4 +37,7 @@ export const JSqueeze = {
     stats() {
         return debugModule.stats()
     },
+    getWorkerPoolState() {
+        return workersModule.getWorkerPoolState()
+    },
 }

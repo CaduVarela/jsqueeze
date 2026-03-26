@@ -1,5 +1,5 @@
 export function createWorkerPool(config = {}) {
-    const { workerCount = 4 } = config
+    const { workerCount = 4, debug = null } = config
     const workers = []
     const taskQueue = []
     const activeTasks = new Map()
@@ -48,6 +48,7 @@ export function createWorkerPool(config = {}) {
             } else {
                 task.resolve(result)
             }
+            if (debug) debug.increment('workerTasksCompleted')
             activeTasks.delete(taskId)
             availableWorkers++
         }
@@ -83,6 +84,15 @@ export function createWorkerPool(config = {}) {
         return availableWorkers
     }
 
+    function getPoolState() {
+        return {
+            availableWorkers,
+            tasksInQueue: taskQueue.length,
+            activeWorkers: activeTasks.size,
+            totalWorkers: workerCount
+        }
+    }
+
     function terminate() {
         workers.forEach(w => w.terminate())
     }
@@ -92,6 +102,7 @@ export function createWorkerPool(config = {}) {
     return {
         run,
         getAvailableWorkerCount,
+        getPoolState,
         terminate
     }
 }
@@ -105,7 +116,8 @@ export function createWorkersModule(debug) {
         const threshold = getThresholdForMode(config.mode)
         workerPool = createWorkerPool({
             workerCount: 4,
-            threshold
+            threshold,
+            debug
         })
     }
 
@@ -129,10 +141,18 @@ export function createWorkersModule(debug) {
     function offloadIfNeeded(fn, taskDuration) {
         const threshold = getThresholdForMode(config.mode)
         if (taskDuration > threshold && workerPool) {
+            if (debug) debug.increment('workerTasksOffloaded')
             return workerPool.run({
                 type: 'execute',
                 fn: fn.toString()
             })
+        }
+        return null
+    }
+
+    function getWorkerPoolState() {
+        if (workerPool) {
+            return workerPool.getPoolState()
         }
         return null
     }
@@ -142,6 +162,7 @@ export function createWorkersModule(debug) {
         minLevel: 2,
         start,
         stop,
-        offloadIfNeeded
+        offloadIfNeeded,
+        getWorkerPoolState
     }
 }

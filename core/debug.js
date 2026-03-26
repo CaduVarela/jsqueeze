@@ -7,6 +7,8 @@ const COUNTER_KEYS = [
     'mutationsBatched',
     'mutationsObserved',
     'eventsSkipped',
+    'workerTasksOffloaded',
+    'workerTasksCompleted',
 ]
 
 function zeroCounters() {
