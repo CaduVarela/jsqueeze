@@ -5,9 +5,41 @@ export function createSchedulerModule(debug) {
     let _requestAnimationFrame = null
     let config = {}
     let lastRafTime = 0
+    let taskQueue = []
+    let workers = null
 
     function getTargetFps() {
         return FPS_TARGETS[config.mode] ?? 60
+    }
+
+    function setWorkersModule(workersModule) {
+        workers = workersModule
+    }
+
+    function executeTask(task) {
+        const startTime = performance.now()
+
+        try {
+            const result = task.fn()
+            const duration = performance.now() - startTime
+
+            if (duration > 50 && workers && task.priority === 'low') {
+                workers.offloadIfNeeded(task.fn, duration)
+            }
+
+            if (debug) debug.increment('interceptedTasks')
+            return result
+        } catch (e) {
+            console.error('Task execution error:', e)
+        }
+    }
+
+    function queue(fn, priority = 'normal') {
+        taskQueue.push({ fn, priority })
+    }
+
+    function getQueueLength() {
+        return taskQueue.length
     }
 
     function patchSetTimeout() {
@@ -58,7 +90,8 @@ export function createSchedulerModule(debug) {
             _requestAnimationFrame = null
         }
         lastRafTime = 0
+        taskQueue = []
     }
 
-    return { name: 'scheduler', minLevel: 1, start, stop }
+    return { name: 'scheduler', minLevel: 1, start, stop, setWorkersModule, queue, getQueueLength, executeTask }
 }
